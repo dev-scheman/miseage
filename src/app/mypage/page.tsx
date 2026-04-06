@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRequireActivePlan } from "@/lib/useRequireActivePlan";
 import { useRouter } from "next/navigation";
+import Footer from "@/components/Footer";
 
 
 export default function MyPage() {
@@ -67,7 +68,7 @@ export default function MyPage() {
 
   const color = (days ?? 100) <= 3 ? "bg-red-100" : "bg-yellow-100";
   return (
-    <div className="min-h-screen bg-white text-black p-6">
+    <div className="min-h-screen bg-white text-black p-6 pb-32">
       <div className="max-w-xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold">マイページ</h1>
         {profile?.trial_ends_at && !profile?.subscribed && (
@@ -115,6 +116,22 @@ export default function MyPage() {
           新しい店舗を登録
         </button>
       </div>
+
+      {/* Legal Links Footer */}
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t px-4 py-4">
+        <div className="max-w-xl mx-auto flex flex-wrap gap-4 justify-center text-xs text-gray-500">
+          <button onClick={() => router.push("/privacy")} className="hover:text-gray-700">プライバシーポリシー</button>
+          <span>|</span>
+          <button onClick={() => router.push("/terms")} className="hover:text-gray-700">利用規約</button>
+          <span>|</span>
+          <button onClick={() => router.push("/tokushoho")} className="hover:text-gray-700">特定商取引法</button>
+          <span>|</span>
+          <button onClick={() => router.push("/contact")} className="hover:text-gray-700">お問い合わせ</button>
+        </div>
+      </div>
+
+      {/* Navigation Footer */}
+      <Footer />
     </div>
   );
 }

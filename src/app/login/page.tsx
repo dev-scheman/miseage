@@ -49,6 +49,26 @@ export default function LoginPage() {
             トップページに戻る
           </button>
 
+          <div className="pt-4 border-t text-center space-y-2 text-xs text-gray-600">
+            <p>
+              ログインすると
+              <button
+                onClick={() => router.push("/terms")}
+                className="text-blue-600 hover:text-blue-700 mx-0.5"
+              >
+                利用規約
+              </button>
+              と
+              <button
+                onClick={() => router.push("/privacy")}
+                className="text-blue-600 hover:text-blue-700 mx-0.5"
+              >
+                プライバシーポリシー
+              </button>
+              に同意されたものとみなします
+            </p>
+          </div>
+
           <div className="pt-4 border-t text-center space-y-2">
             <p className="text-xs text-gray-500">
               GBPへのご登録がまだのオーナー様は

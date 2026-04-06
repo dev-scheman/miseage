@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRequireActivePlan } from "@/lib/useRequireActivePlan";
 import { FACILITY_EMOJI } from "@/lib/facilityEmoji";
+import Footer from "@/components/Footer";
 
 // 大分類ごとの追加フィールド定義
 const CATEGORY_EXTRA_FIELDS: Record<string, { key: string; label: string; placeholder: string }[]> = {
@@ -799,6 +800,22 @@ export default function EditShopPage() {
           </button>
         </div>
       </div>
+
+      {/* Legal Links Footer */}
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t px-4 py-4">
+        <div className="max-w-xl mx-auto flex flex-wrap gap-4 justify-center text-xs text-gray-500">
+          <button onClick={() => router.push("/privacy")} className="hover:text-gray-700">プライバシーポリシー</button>
+          <span>|</span>
+          <button onClick={() => router.push("/terms")} className="hover:text-gray-700">利用規約</button>
+          <span>|</span>
+          <button onClick={() => router.push("/tokushoho")} className="hover:text-gray-700">特定商取引法</button>
+          <span>|</span>
+          <button onClick={() => router.push("/contact")} className="hover:text-gray-700">お問い合わせ</button>
+        </div>
+      </div>
+
+      {/* Navigation Footer */}
+      <Footer />
     </div>
   );
 }

@@ -345,6 +345,19 @@ export default function ShopPage() {
 
       </div>
 
+      {/* Legal Links Footer */}
+      <div className="px-4 py-4 text-center border-t mt-8">
+        <div className="flex flex-wrap gap-4 justify-center text-xs text-gray-500 mb-4">
+          <button onClick={() => router.push("/privacy")} className="hover:text-gray-700">プライバシーポリシー</button>
+          <span>|</span>
+          <button onClick={() => router.push("/terms")} className="hover:text-gray-700">利用規約</button>
+          <span>|</span>
+          <button onClick={() => router.push("/tokushoho")} className="hover:text-gray-700">特定商取引法</button>
+          <span>|</span>
+          <button onClick={() => router.push("/contact")} className="hover:text-gray-700">お問い合わせ</button>
+        </div>
+      </div>
+
       {/* Footer */}
       <div className="pb-16" />
       <Footer />
