@@ -6,7 +6,11 @@ export default function ContactPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <>
+      <head>
+        <meta name="robots" content="noindex" />
+      </head>
+      <div className="min-h-screen bg-white text-black">
       <header className="border-b p-4">
         <button
           onClick={() => router.push("/")}
@@ -59,5 +63,6 @@ export default function ContactPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

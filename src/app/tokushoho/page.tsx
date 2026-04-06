@@ -1,12 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Head from "next/head";
 
 export default function TokushoholPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <>
+      <head>
+        <meta name="robots" content="noindex" />
+      </head>
+      <div className="min-h-screen bg-white text-black">
       <header className="border-b p-4">
         <button
           onClick={() => router.push("/")}
@@ -23,22 +28,22 @@ export default function TokushoholPage() {
           <div className="grid grid-cols-3 gap-4 border rounded-lg p-4">
             <div>
               <p className="font-semibold">販売業者</p>
-              <p className="text-sm">【会社名】</p>
+              <p className="text-sm">合同会社Show Tech</p>
             </div>
             <div>
               <p className="font-semibold">代表者名</p>
-              <p className="text-sm">【代表者名】</p>
+              <p className="text-sm">大川将</p>
             </div>
             <div>
               <p className="font-semibold">住所</p>
-              <p className="text-sm">【住所】</p>
+              <p className="text-sm">福岡県久留米市日ノ出町15-701</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 border rounded-lg p-4">
             <div>
               <p className="font-semibold">電話番号</p>
-              <p className="text-sm">【電話番号】</p>
+              <p className="text-sm">090-4191-7089</p>
             </div>
             <div>
               <p className="font-semibold">メールアドレス</p>
@@ -91,5 +96,6 @@ export default function TokushoholPage() {
         </p>
       </div>
     </div>
+    </>
   );
 }
