@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MiseAge",
   description: "ローカルビジネス向けMEO特化SaaS",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
