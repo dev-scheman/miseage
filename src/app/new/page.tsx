@@ -157,7 +157,7 @@ export default function NewShopPage() {
           <span>|</span>
           <button onClick={() => router.push("/terms")} className="hover:text-gray-700">利用規約</button>
           <span>|</span>
-          <button onClick={() => router.push("/tokushoho")} className="hover:text-gray-700">特定商取引法</button>
+          <button onClick={() => router.push("/legal")} className="hover:text-gray-700">特定商取引法</button>
           <span>|</span>
           <button onClick={() => router.push("/contact")} className="hover:text-gray-700">お問い合わせ</button>
         </div>

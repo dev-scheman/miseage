@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 
-export default function TokushoholPage() {
+export default function LegalPage() {
   const router = useRouter();
 
   return (
@@ -28,11 +28,11 @@ export default function TokushoholPage() {
           <div className="grid grid-cols-3 gap-4 border rounded-lg p-4">
             <div>
               <p className="font-semibold">販売業者</p>
-              <p className="text-sm">合同会社Show Tech</p>
+              <p className="text-sm">合同会社 Show Tech</p>
             </div>
             <div>
               <p className="font-semibold">代表者名</p>
-              <p className="text-sm">大川将</p>
+              <p className="text-sm">大川将祉</p>
             </div>
             <div>
               <p className="font-semibold">住所</p>
@@ -59,8 +59,9 @@ export default function TokushoholPage() {
           <div className="border rounded-lg p-4">
             <p className="font-semibold mb-2">料金</p>
             <p className="text-sm">
-              トライアル：14日間無料<br />
-              Proプラン：¥1,000/月
+              初めてご利用のユーザー様は、最初の店舗登録から<br />
+              トライアルとして14日間無料でフル機能ご利用いただけます<br />
+              その後は、1店舗登録毎に月500円のライセンス購入が必要です。
             </p>
           </div>
 
@@ -86,7 +87,8 @@ export default function TokushoholPage() {
             <p className="font-semibold mb-2">その他の注意事項</p>
             <p className="text-sm">
               サービスの利用には Google OAuth による認証が必要です。<br />
-              トライアル期間終了後、プランの選択がない場合はサービス利用が停止されます。
+              トライアル期間終了後、プランの選択がない場合は<br />
+              MEOブースト等、有料機能が停止します（マイページのご利用は可能です）
             </p>
           </div>
         </div>
