@@ -16,6 +16,8 @@ export default function MyPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const getRemainingDays = () => {
     if (!profile?.trial_ends_at) return null;
@@ -32,10 +34,12 @@ export default function MyPage() {
   useEffect(() => {
     const fetchShops = async () => {
       const {
-        data: { user },
+        data: { user: authUser },
       } = await supabase.auth.getUser();
 
-      if (!user) {
+      setUser(authUser);
+
+      if (!authUser) {
         router.push("/login");
         return;
       }
@@ -44,14 +48,14 @@ export default function MyPage() {
       const { data } = await supabase
         .from("shops")
         .select("*")
-        .eq("user_id", user.id);
+        .eq("user_id", authUser.id);
 
       setShops(data || []);
 
       const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", authUser.id)
         .single();
 
       setProfile(profileData);
@@ -68,9 +72,64 @@ export default function MyPage() {
   const days = getRemainingDays();
 
   const color = (days ?? 100) <= 3 ? "bg-red-100" : "bg-yellow-100";
+
+  const handleSwitchAccount = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/mypage`,
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-white text-black p-6 pb-32">
+      {/* Account Menu Modal */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 bg-black/30 z-40 flex items-center justify-center p-4" onClick={() => setIsMenuOpen(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-center">MiseAge</h2>
+
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">現在ログイン中のGoogleアカウント</p>
+
+              <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                {user?.user_metadata?.avatar_url && (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt="avatar"
+                    className="w-12 h-12 rounded-full"
+                  />
+                )}
+                <div>
+                  <p className="font-semibold text-sm">{user?.user_metadata?.name}</p>
+                  <p className="text-xs text-gray-500">{user?.email}</p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSwitchAccount}
+                className="w-full bg-black text-white py-3 rounded-lg font-semibold text-sm"
+              >
+                別のGoogleアカウントでログイン
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-xl mx-auto space-y-6">
+        {/* Header with Account Menu */}
+        <div className="flex items-center justify-center pb-4 border-b">
+          <button
+            onClick={() => setIsMenuOpen(true)}
+            className="flex items-center gap-1 hover:opacity-70"
+          >
+            <span className="text-sm font-semibold">{user?.email}</span>
+            <span className="text-xs">▼</span>
+          </button>
+        </div>
+
         <h1 className="text-2xl font-bold">マイページ</h1>
         {profile?.trial_ends_at && !profile?.subscribed && (
           <div className="p-3 bg-yellow-100 rounded-lg text-sm ${color}">
