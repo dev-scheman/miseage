@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
+import FooterMenu from "@/components/FooterMenu";
 
 export default function BillingPage() {
   const [profile, setProfile] = useState<any>(null);
@@ -104,21 +105,9 @@ export default function BillingPage() {
         </button>
       </div>
 
-      {/* Legal Links Footer */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t px-4 py-4">
-        <div className="max-w-xl mx-auto flex flex-wrap gap-4 justify-center text-xs text-gray-500">
-          <a href="/privacy" className="hover:text-gray-700">プライバシーポリシー</a>
-          <span>|</span>
-          <a href="/terms" className="hover:text-gray-700">利用規約</a>
-          <span>|</span>
-          <a href="/legal" className="hover:text-gray-700">特定商取引法</a>
-          <span>|</span>
-          <a href="/contact" className="hover:text-gray-700">お問い合わせ</a>
-        </div>
-      </div>
-
-      {/* Navigation Footer */}
+      {/* Footers */}
       <Footer />
+      <FooterMenu />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { FACILITY_EMOJI } from "@/lib/facilityEmoji";
 import Footer from "@/components/Footer";
+import FooterMenu from "@/components/FooterMenu";
 
 const DAYS = [
   { key: "monday",    label: "月" },
@@ -345,22 +346,10 @@ export default function ShopPage() {
 
       </div>
 
-      {/* Legal Links Footer */}
-      <div className="px-4 py-4 text-center border-t mt-8">
-        <div className="flex flex-wrap gap-4 justify-center text-xs text-gray-500 mb-4">
-          <a href="/privacy" className="hover:text-gray-700">プライバシーポリシー</a>
-          <span>|</span>
-          <a href="/terms" className="hover:text-gray-700">利用規約</a>
-          <span>|</span>
-          <a href="/legal" className="hover:text-gray-700">特定商取引法</a>
-          <span>|</span>
-          <a href="/contact" className="hover:text-gray-700">お問い合わせ</a>
-        </div>
-      </div>
-
-      {/* Footer */}
+      {/* Footers */}
       <div className="pb-16" />
       <Footer />
+      <FooterMenu />
       </div>
     </div>
   );
