@@ -1,24 +1,14 @@
-"use client";
+import { Metadata } from "next";
+import HeaderSimple from "@/components/HeaderSimple";
 
-import { useRouter } from "next/navigation";
+export const metadata: Metadata = {
+  robots: "noindex",
+};
 
 export default function PrivacyPage() {
-  const router = useRouter();
-
   return (
-    <>
-      <head>
-        <meta name="robots" content="noindex" />
-      </head>
-      <div className="min-h-screen bg-white text-black">
-      <header className="border-b p-4">
-        <button
-          onClick={() => router.push("/")}
-          className="font-bold text-lg hover:opacity-70"
-        >
-          MiseAge
-        </button>
-      </header>
+    <div className="min-h-screen bg-white text-black">
+      <HeaderSimple />
 
       <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
         <h1 className="text-3xl font-bold">プライバシーポリシー</h1>
@@ -71,6 +61,5 @@ export default function PrivacyPage() {
         </p>
       </div>
     </div>
-    </>
   );
 }

@@ -6,42 +6,31 @@ import { supabase } from "@/lib/supabase";
 import { useRequireActivePlan } from "@/lib/useRequireActivePlan";
 import { FACILITY_EMOJI } from "@/lib/facilityEmoji";
 import Footer from "@/components/Footer";
-import FooterMenu from "@/components/FooterMenu";
 
 // 大分類ごとの追加フィールド定義
 const CATEGORY_EXTRA_FIELDS: Record<string, { key: string; label: string; placeholder: string }[]> = {
   food_beverage: [
     { key: "menu_url",        label: "メニューURL",   placeholder: "https://..." },
-    { key: "reservation_url", label: "予約URL",       placeholder: "https://..." },
     { key: "cuisine_type",    label: "料理ジャンル",  placeholder: "例: 和食、イタリアン" },
     { key: "price_range",     label: "価格帯",        placeholder: "例: ¥800〜¥1,500" },
   ],
   beauty_health: [
-    { key: "reservation_url",    label: "予約URL",         placeholder: "https://..." },
     { key: "service_description",label: "施術メニュー概要", placeholder: "例: カット・カラー・パーマ" },
   ],
   fitness: [
-    { key: "reservation_url", label: "体験予約URL", placeholder: "https://..." },
     { key: "price_info",      label: "料金情報",    placeholder: "例: 月額¥7,000〜" },
   ],
-  medical: [
-    { key: "reservation_url", label: "予約URL", placeholder: "https://..." },
-  ],
+  medical: [],
   education: [
-    { key: "reservation_url", label: "体験・見学予約URL", placeholder: "https://..." },
     { key: "price_info",      label: "料金情報",          placeholder: "例: 月謝¥8,000〜" },
   ],
   hotel: [
-    { key: "reservation_url", label: "予約URL",   placeholder: "https://..." },
     { key: "price_range",     label: "料金目安",  placeholder: "例: 1泊¥8,000〜" },
   ],
   entertainment: [
-    { key: "reservation_url", label: "予約URL",   placeholder: "https://..." },
     { key: "price_range",     label: "料金目安",  placeholder: "例: 30分¥500〜" },
   ],
-  automotive: [
-    { key: "reservation_url", label: "予約・問い合わせURL", placeholder: "https://..." },
-  ],
+  automotive: [],
   retail: [],
   service: [],
 };
@@ -78,6 +67,9 @@ export default function EditShopPage() {
 
   const [shop, setShop] = useState<any>(null);
 
+  // 初期値（変更判定用）
+  const [initialState, setInitialState] = useState<any>(null);
+
   // 基本情報
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -86,6 +78,8 @@ export default function EditShopPage() {
 
   // 画像
   const [imageUrl, setImageUrl] = useState("");
+  const [apiImageUrl, setApiImageUrl] = useState(""); // API から取得した画像
+  const [useApiImage, setUseApiImage] = useState(false); // API 画像を使うか
   const [imageUploading, setImageUploading] = useState(false);
 
   // 住所
@@ -102,12 +96,22 @@ export default function EditShopPage() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
   // カテゴリ別追加フィールド
-  const [metadata, setMetadata] = useState<Record<string, string>>({});
+  const [metadata, setMetadata] = useState<Record<string, string | string[]>>({});
 
   // 営業時間
   const [openingHours, setOpeningHours] = useState<Record<string, DayHours>>({});
   const [bulkOpen, setBulkOpen] = useState("10:00");
   const [bulkClose, setBulkClose] = useState("20:00");
+
+  // FAQ
+  const [faqs, setFaqs] = useState<any[]>([]);
+
+  // 凡例ポップアップ
+  const [showLegend, setShowLegend] = useState(false);
+
+  // 削除確認モーダル
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const updateDay = (day: string, field: keyof DayHours, value: string | boolean) => {
     setOpeningHours((prev) => {
@@ -163,41 +167,150 @@ export default function EditShopPage() {
 
       setShop(data);
       setName(data.name || "");
-      setPhone(data.phone || "");
-      setInstagramUrl(data.instagram_url || "");
-      setGoogleMapUrl(data.google_map_url || "");
+
+      // API から取得した phone（JSON パースが必要な場合に対応）
+      let dataforceData = data.dataforce_response;
+      if (typeof dataforceData === 'string') {
+        try {
+          dataforceData = JSON.parse(dataforceData);
+        } catch (e) {
+          dataforceData = {};
+        }
+      }
+      const apiPhone = (dataforceData?.phone || "").replace(/^\+81/, '0');
+      setPhone(data.phone || apiPhone || "");
+
+      // API url がインスタ URL の場合は自動入力（? 以降を削除）
+      let apiInstagramUrl = "";
+      if (dataforceData?.url?.includes("instagram.com")) {
+        apiInstagramUrl = dataforceData.url.split("?")[0];
+      }
+      setInstagramUrl(data.instagram_url || apiInstagramUrl || "");
+
+      // place_id から Google Maps URL を自動生成
+      const gmapUrl = data.google_map_url || (data.place_id
+        ? `https://maps.google.com/?q=place_id:${data.place_id}`
+        : "");
+      setGoogleMapUrl(gmapUrl);
       setPostalCode(data.postal_code || "");
       setPrefecture(data.prefecture || "");
       setCity(data.city || "");
       setStreetAddress(data.street_address || "");
+
+      // street_address が未入力の場合のみ API データから自動入力
+      if (!data.street_address && dataforceData?.address_info) {
+        const addrInfo = dataforceData.address_info;
+        setPostalCode(data.postal_code || addrInfo.zip || "");
+        setPrefecture(data.prefecture || addrInfo.region || "");
+        setCity(data.city || addrInfo.city || "");
+        setStreetAddress(addrInfo.address || "");
+      }
       setFacilities(data.facilities || {});
       setOpeningHours(data.opening_hours || {});
 
+      // FAQ を JSON から読み込み
+      setFaqs(data.faqs_jsonb || []);
+
+      // street_address が未入力の場合のみ API データから営業時間を自動入力
+      if (!data.street_address && dataforceData?.work_hours?.timetable) {
+        const apiTimetable = dataforceData.work_hours.timetable;
+        const convertedHours: Record<string, DayHours> = {};
+
+        for (const day of DAYS) {
+          const dayKey = day.key;
+          const dayData = apiTimetable[dayKey];
+
+          if (dayData && Array.isArray(dayData) && dayData.length > 0) {
+            const slot = dayData[0]; // 最初の営業時間のみを使用
+            convertedHours[dayKey] = {
+              open: `${String(slot.open.hour).padStart(2, '0')}:${String(slot.open.minute).padStart(2, '0')}`,
+              close: `${String(slot.close.hour).padStart(2, '0')}:${String(slot.close.minute).padStart(2, '0')}`,
+              closed: false,
+            };
+          } else {
+            // データがない場合は定休日
+            convertedHours[dayKey] = { open: "", close: "", closed: true };
+          }
+        }
+        setOpeningHours(convertedHours);
+      }
+
       // 旧 price_range → price_from / price_to に自動マイグレーション
       const rawMeta = data.metadata || {};
+
+      // instagram_url（? 以降削除済み）と重複する URL を other_urls から除外
+      const cleanInstagramUrl = (data.instagram_url || apiInstagramUrl || "").split("?")[0];
+      const filteredOtherUrls = (data.other_urls || []).filter((url: string) =>
+        !url.includes("instagram.com") || (cleanInstagramUrl && !url.includes(cleanInstagramUrl.split("/").pop()))
+      );
+
+      let metaDataToSet;
       if (rawMeta.price_range && !rawMeta.price_from && !rawMeta.price_to) {
         const parts = String(rawMeta.price_range).split("〜");
         const from = parts[0]?.replace(/^¥/, "") || "";
         const to   = parts[1]?.replace(/^¥/, "") || "";
         const { price_range: _, ...rest } = rawMeta;
-        setMetadata({ ...rest, price_from: from, price_to: to });
+        metaDataToSet = { ...rest, price_from: from, price_to: to, other_urls: filteredOtherUrls };
       } else {
-        setMetadata(rawMeta);
+        metaDataToSet = { ...rawMeta, other_urls: filteredOtherUrls };
       }
-      setImageUrl(data.image_url || "");
+      setMetadata(metaDataToSet);
+
+      // metadataWithoutUrls を initialState 用に定義
+      const { other_urls, ...metadataWithoutUrls } = metaDataToSet;
+
+      // API 画像 URL を取得
+      const apiImage = dataforceData?.main_image || "";
+      setApiImageUrl(apiImage);
+
+      // 初回入力（image_url が未設定）で API 画像がある場合は、それを使う
+      if (data.image_url) {
+        setImageUrl(data.image_url);
+        setUseApiImage(false);
+      } else if (apiImage) {
+        // API 画像を初期選択状態にする（まだ保存されていない）
+        setUseApiImage(true);
+      } else {
+        setImageUrl(data.image_url || "");
+        setUseApiImage(false);
+      }
 
       if (data.category_master) {
         setParentCategory(data.category_master.parent_category);
         setCategoryId(data.category_id);
       }
 
-      // category_master 取得
+      // category_master 取得（先に取得して API category マッピングに使用）
       const { data: catMaster } = await supabase
         .from("category_master")
         .select("*")
         .order("parent_category")
         .order("name");
       setCategoryMaster(catMaster || []);
+
+      if (!data.category_id && dataforceData?.category) {
+        // category_id が未設定で API category がある場合、category_mapping から検索
+        const { data: categoryMapping } = await supabase
+          .from("category_mapping")
+          .select("*")
+          .eq("api_category", dataforceData.category)
+          .single();
+
+        if (categoryMapping?.big_category) {
+          setParentCategory(categoryMapping.big_category);
+
+          // category_master から detail_category に対応する id を検索
+          if (categoryMapping?.detail_category && catMaster) {
+            const matchingCategory = catMaster.find(
+              cat => cat.parent_category === categoryMapping.big_category &&
+                     cat.id === categoryMapping.detail_category
+            );
+            if (matchingCategory) {
+              setCategoryId(matchingCategory.id);
+            }
+          }
+        }
+      }
 
       // facility_master を Map で保持
       const { data: facMaster } = await supabase
@@ -206,6 +319,27 @@ export default function EditShopPage() {
       const map: Record<string, any> = {};
       (facMaster || []).forEach((f: any) => { map[f.key] = f; });
       setFacilityMasterMap(map);
+
+      // 初期値をセット（変更判定用）
+      setInitialState({
+        name: data.name || "",
+        phone: data.phone || apiPhone || "",
+        instagramUrl: data.instagram_url || apiInstagramUrl || "",
+        googleMapUrl: gmapUrl,
+        postalCode: data.postal_code || "",
+        prefecture: data.prefecture || "",
+        city: data.city || "",
+        streetAddress: data.street_address || "",
+        categoryId: data.category_id || null,
+        parentCategory: data.category_master?.parent_category || "",
+        metadata: metadataWithoutUrls || {},
+        facilities: data.facilities || {},
+        openingHours: data.opening_hours || {},
+        imageUrl: useApiImage ? apiImageUrl : (data.image_url || ""),
+        useApiImage,
+        apiImageUrl,
+        faqs: data.faqs_jsonb || [],
+      });
     };
 
     fetchAll();
@@ -265,6 +399,41 @@ export default function EditShopPage() {
     setExtraFacilityKeys(preselected);
   }, [mergedConfigs]);
 
+  // 設備チェックから FAQ を自動生成
+  useEffect(() => {
+    const updatedFaqs = [...faqs];
+
+    // facilityMasterMap を使って、チェックされた項目の FAQ を生成
+    Object.entries(facilities).forEach(([facilityKey, isChecked]) => {
+      const facility = facilityMasterMap[facilityKey];
+      if (!facility) return;
+
+      if (isChecked) {
+        // チェック ON: FAQ がなければ作成
+        const existingFaq = updatedFaqs.find((f) => f.created_from === facilityKey);
+        if (!existingFaq && facility.faq_question) {
+          updatedFaqs.push({
+            "@type": "Question",
+            name: facility.faq_question,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: facility.faq_answer_example || "",
+            },
+            created_from: facilityKey,
+          });
+        }
+      } else {
+        // チェック OFF: 対応する FAQ を削除
+        const indexToRemove = updatedFaqs.findIndex((f) => f.created_from === facilityKey);
+        if (indexToRemove >= 0) {
+          updatedFaqs.splice(indexToRemove, 1);
+        }
+      }
+    });
+
+    setFaqs(updatedFaqs);
+  }, [facilities, facilityMasterMap]);
+
   // 郵便番号から住所を自動入力
   const handlePostalLookup = async () => {
     const code = postalCode.replace(/-/g, "");
@@ -313,7 +482,66 @@ export default function EditShopPage() {
     setImageUploading(false);
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    const { error } = await supabase.from("shops").delete().eq("id", id);
+    setIsDeleting(false);
+    if (!error) {
+      alert("削除しました");
+      router.push("/mypage");
+    } else {
+      alert("削除に失敗しました");
+      console.error(error);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleBackClick = () => {
+    // 現在の状態と初期値を比較
+    const currentState = {
+      name,
+      phone,
+      instagramUrl,
+      googleMapUrl,
+      postalCode,
+      prefecture,
+      city,
+      streetAddress,
+      categoryId,
+      parentCategory,
+      metadata,
+      facilities,
+      openingHours,
+      imageUrl,
+      useApiImage,
+      apiImageUrl,
+      faqs,
+    };
+
+    const hasChanges = JSON.stringify(currentState) !== JSON.stringify(initialState);
+
+    if (hasChanges) {
+      if (confirm("変更が保存されていません。戻りますか？")) {
+        router.push("/mypage");
+      }
+    } else {
+      router.push("/mypage");
+    }
+  };
+
   const handleUpdate = async () => {
+    // バリデーション：番地・建物名は必須
+    if (!streetAddress.trim()) {
+      alert("番地・建物名は必須項目です");
+      return;
+    }
+
+    // metadata から other_urls を抽出
+    const { other_urls, ...metadataWithoutUrls } = metadata;
+
+    // FAQ から created_from を除外（JSON-LD 形式で保存）
+    const faqs_jsonld = faqs.map(({ created_from, ...faq }) => faq);
+
     const { error } = await supabase
       .from("shops")
       .update({
@@ -326,10 +554,12 @@ export default function EditShopPage() {
         city,
         street_address: streetAddress,
         category_id: categoryId || null,
-        metadata,
+        metadata: metadataWithoutUrls,
+        other_urls: (Array.isArray(other_urls) ? other_urls : []).filter(u => u.trim()),
         facilities,
         opening_hours: openingHours,
-        image_url: imageUrl || null,
+        image_url: useApiImage ? apiImageUrl : (imageUrl || null),
+        faqs_jsonb: faqs_jsonld,
       })
       .eq("id", id);
 
@@ -346,8 +576,9 @@ export default function EditShopPage() {
   const extraFields = CATEGORY_EXTRA_FIELDS[parentCategory] || [];
 
   // セクション区切り（dark=true のときは黒・太字でメリハリ）
-  const SectionLabel = ({ children, dark }: { children: React.ReactNode; dark?: boolean }) => (
-    <p className={`text-xs font-semibold uppercase tracking-widest pt-6 pb-1 ${dark ? "text-gray-900" : "text-gray-400"}`}>
+  const SectionLabel = ({ children, dark, meoIcon }: { children: React.ReactNode; dark?: boolean; meoIcon?: boolean }) => (
+    <p className={`text-xs font-semibold uppercase tracking-widest pt-6 pb-1 ${dark ? "text-gray-900" : "text-gray-400"} flex items-center gap-2`}>
+      {meoIcon && <span className="text-sm">📍</span>}
       {children}
     </p>
   );
@@ -358,61 +589,125 @@ export default function EditShopPage() {
   return (
     <div className="min-h-screen bg-white text-black">
       {/* ヘッダー */}
-      <div className="sticky top-0 z-10 bg-white border-b flex items-center px-4 py-3 gap-3">
-        <button onClick={() => router.push("/mypage")} className="text-gray-500 text-sm">
+      <div className="sticky top-0 z-10 bg-white border-b grid grid-cols-3 items-center px-4 h-11">
+        <button onClick={handleBackClick} className="text-gray-500 text-sm justify-self-start">
           ✕
         </button>
-        <span className="font-semibold flex-1 text-center">店舗を編集</span>
+        <span className="font-semibold text-center">店舗情報を編集</span>
         <button
           onClick={handleUpdate}
-          className="text-sm font-semibold text-blue-600"
+          className="text-sm font-bold text-white bg-black px-4 py-2 rounded-lg justify-self-end -mr-3"
         >
-          保存
+          保存する
         </button>
       </div>
 
       <div className="max-w-xl mx-auto px-4 pb-20">
 
         {/* ── 店舗画像 ── */}
-        <SectionLabel dark>店舗画像</SectionLabel>
-        <div className="flex items-center gap-4">
-          {/* プレビュー */}
-          <div className="w-20 h-20 rounded-xl bg-gray-100 flex-shrink-0 overflow-hidden">
-            {imageUrl
-              ? <img src={imageUrl} alt="店舗画像" className="w-full h-full object-cover" />
-              : <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">🏪</div>
-            }
+        <SectionLabel dark>📍 店舗画像</SectionLabel>
+        {apiImageUrl ? (
+          <div className="grid grid-cols-2 gap-4">
+            {/* 左：API 画像 */}
+            <div className="flex flex-col gap-2">
+              <div className="aspect-square rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+                <img src={apiImageUrl} alt="GBP画像" className="w-full h-full object-cover" />
+              </div>
+              <p className="text-xs text-gray-500">(GBPから自動取得しました)</p>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="imageSource"
+                  checked={useApiImage}
+                  onChange={() => {
+                    setUseApiImage(true);
+                    setImageUrl("");
+                  }}
+                  className="cursor-pointer"
+                />
+                <span>この画像を使う（推奨）</span>
+              </label>
+            </div>
+
+            {/* 右：ユーザーアップロード */}
+            <div className="flex flex-col gap-2">
+              <div className="aspect-square rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 overflow-hidden flex items-center justify-center">
+                {imageUrl && !useApiImage ? (
+                  <img src={imageUrl} alt="ユーザー画像" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 px-2">[タップして画像を選択]</p>
+                  </div>
+                )}
+              </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name="imageSource"
+                  checked={!useApiImage}
+                  onChange={() => {
+                    setUseApiImage(false);
+                  }}
+                  className="cursor-pointer"
+                />
+                <span>自分で画像をアップする</span>
+              </label>
+              {!useApiImage && (
+                <label className="cursor-pointer inline-block bg-blue-50 border border-blue-200 text-blue-600 text-xs px-3 py-2 rounded-lg text-center">
+                  {imageUploading ? "アップロード中..." : "画像を選択"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={imageUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
           </div>
-          {/* アップロードボタン */}
-          <div className="space-y-1">
-            <label className="cursor-pointer inline-block bg-gray-50 border border-gray-200 text-sm px-4 py-2 rounded-xl">
-              {imageUploading ? "アップロード中..." : imageUrl ? "画像を変更" : "画像を追加"}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={imageUploading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleImageUpload(file);
-                }}
-              />
-            </label>
-            {imageUrl && (
-              <button
-                type="button"
-                onClick={() => setImageUrl("")}
-                className="block text-xs text-gray-400"
-              >
-                削除
-              </button>
-            )}
-            <p className="text-xs text-gray-400">ロゴや店舗写真（検索エンジン向け）</p>
+        ) : (
+          <div className="flex items-center gap-4">
+            {/* API 画像がない場合は従来のUI */}
+            <div className="w-20 h-20 rounded-xl bg-gray-100 flex-shrink-0 overflow-hidden">
+              {imageUrl
+                ? <img src={imageUrl} alt="店舗画像" className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">🏪</div>
+              }
+            </div>
+            <div className="space-y-1">
+              <label className="cursor-pointer inline-block bg-gray-50 border border-gray-200 text-sm px-4 py-2 rounded-xl">
+                {imageUploading ? "アップロード中..." : imageUrl ? "画像を変更" : "画像を追加"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={imageUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file);
+                  }}
+                />
+              </label>
+              {imageUrl && (
+                <button
+                  type="button"
+                  onClick={() => setImageUrl("")}
+                  className="block text-xs text-gray-400"
+                >
+                  削除
+                </button>
+              )}
+              <p className="text-xs text-gray-400">ロゴや店舗写真（検索エンジン向け）</p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── 店舗名 ── */}
-        <SectionLabel>店舗名</SectionLabel>
+        <SectionLabel dark>📍 店舗名 <span className="text-red-500">※</span></SectionLabel>
         <input
           className={inputCls}
           value={name}
@@ -424,7 +719,7 @@ export default function EditShopPage() {
         <SectionLabel dark>カテゴリ</SectionLabel>
         <div className="space-y-2">
           <div>
-            <label className={labelCls}>業種（大分類）</label>
+            <label className={labelCls}><span className="text-sm">📍</span> 業種（大分類）<span className="text-red-500">※</span></label>
             <select
               className={inputCls}
               value={parentCategory}
@@ -438,7 +733,7 @@ export default function EditShopPage() {
           </div>
           {parentCategory && (
             <div>
-              <label className={labelCls}>詳細カテゴリ（小分類）</label>
+              <label className={labelCls}>詳細カテゴリ（小分類）<span className="text-red-500">※</span></label>
               <select
                 className={inputCls}
                 value={categoryId || ""}
@@ -457,15 +752,22 @@ export default function EditShopPage() {
         <SectionLabel dark>住所</SectionLabel>
         <div className="space-y-2">
           <div>
-            <label className={labelCls}>郵便番号</label>
+            <label className={labelCls}><span className="text-sm">📍</span> 郵便番号<span className="text-red-500">※</span></label>
             <div className="flex gap-2">
-              <input
-                className={`${inputCls} flex-1`}
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
-                placeholder="810-0001"
-                maxLength={8}
-              />
+              <div className="relative flex-1">
+                <input
+                  className={`${inputCls}`}
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  placeholder="810-0001"
+                  maxLength={8}
+                />
+                {!shop?.street_address && postalCode && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">
+                    ⚙️
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={handlePostalLookup}
@@ -478,16 +780,37 @@ export default function EditShopPage() {
             {postalError && <p className="text-red-500 text-xs mt-1">{postalError}</p>}
           </div>
           <div>
-            <label className={labelCls}>都道府県 <span className="text-gray-300">（郵便番号から自動入力）</span></label>
-            <input className={`${inputCls} text-gray-400`} value={prefecture} readOnly placeholder="郵便番号で検索" />
+            <label className={labelCls}><span className="text-sm">📍</span> 都道府県 <span className="text-gray-300">（郵便番号から自動入力）</span></label>
+            <div className="relative">
+              <input className={`${inputCls} text-gray-400`} value={prefecture} readOnly placeholder="郵便番号で検索" />
+              {!shop?.street_address && prefecture && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">
+                  ⚙️
+                </span>
+              )}
+            </div>
           </div>
           <div>
-            <label className={labelCls}>市区郡 <span className="text-gray-300">（郵便番号から自動入力）</span></label>
-            <input className={`${inputCls} text-gray-400`} value={city} readOnly placeholder="郵便番号で検索" />
+            <label className={labelCls}><span className="text-sm">📍</span> 市区郡 <span className="text-gray-300">（郵便番号から自動入力）</span></label>
+            <div className="relative">
+              <input className={`${inputCls} text-gray-400`} value={city} readOnly placeholder="郵便番号で検索" />
+              {!shop?.street_address && city && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">
+                  ⚙️
+                </span>
+              )}
+            </div>
           </div>
           <div>
-            <label className={labelCls}>番地・建物名</label>
-            <input className={inputCls} value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} placeholder="天神1-1-1 〇〇ビル2F" />
+            <label className={labelCls}><span className="text-sm">📍</span> 番地・建物名<span className="text-red-500">※</span></label>
+            <div className="relative">
+              <input className={inputCls} value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} placeholder="天神1-1-1 〇〇ビル2F" />
+              {!shop?.street_address && streetAddress && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">
+                  ⚙️
+                </span>
+              )}
+            </div>
           </div>
           <div>
             <label className={labelCls}>最寄り駅</label>
@@ -505,16 +828,78 @@ export default function EditShopPage() {
         <SectionLabel dark>連絡先・リンク</SectionLabel>
         <div className="space-y-2">
           <div>
-            <label className={labelCls}>電話番号</label>
-            <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="000-0000-0000" />
+            <label className={labelCls}><span className="text-sm">📍</span> 電話番号<span className="text-red-500">※</span></label>
+            <div className="relative">
+              <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="000-0000-0000" />
+              {(() => {
+                let dfData = shop?.dataforce_response;
+                if (typeof dfData === 'string') {
+                  try {
+                    dfData = JSON.parse(dfData);
+                  } catch (e) {
+                    dfData = {};
+                  }
+                }
+                return dfData?.phone ? (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">
+                    ⚙️
+                  </span>
+                ) : null;
+              })()}
+            </div>
           </div>
           <div>
             <label className={labelCls}>Instagram URL</label>
             <input className={inputCls} value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://www.instagram.com/..." />
           </div>
           <div>
-            <label className={labelCls}>Googleマップ URL</label>
+            <label className={labelCls}><span className="text-sm">📍</span> Googleマップ URL</label>
             <input className={inputCls} value={googleMapUrl} onChange={(e) => setGoogleMapUrl(e.target.value)} placeholder="https://maps.google.com/..." />
+          </div>
+          <div>
+            <label className={labelCls}>予約URL</label>
+            <input className={inputCls} value={metadata["reservation_url"] || ""} onChange={(e) => setMetadata({...metadata, reservation_url: e.target.value})} placeholder="https://..." />
+          </div>
+
+          {/* その他のURL */}
+          <div>
+            <label className={labelCls}>その他のURL</label>
+            <div className="space-y-2">
+              {(Array.isArray(metadata["other_urls"]) ? metadata["other_urls"] : []).map((url: string, idx: number) => (
+                <div key={idx} className="flex gap-2">
+                  <input
+                    className={`${inputCls} flex-1`}
+                    value={url}
+                    onChange={(e) => {
+                      const newUrls = [...(Array.isArray(metadata["other_urls"]) ? metadata["other_urls"] : [])];
+                      newUrls[idx] = e.target.value;
+                      setMetadata({...metadata, other_urls: newUrls});
+                    }}
+                    placeholder="https://..."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newUrls = (Array.isArray(metadata["other_urls"]) ? metadata["other_urls"] : []).filter((_, i) => i !== idx);
+                      setMetadata({...metadata, other_urls: newUrls});
+                    }}
+                    className="bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-red-200"
+                  >
+                    削除
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const newUrls = [...(Array.isArray(metadata["other_urls"]) ? metadata["other_urls"] : []), ""];
+                  setMetadata({...metadata, other_urls: newUrls});
+                }}
+                className="bg-blue-100 text-blue-600 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-blue-200 w-full"
+              >
+                ＋ URLを追加
+              </button>
+            </div>
           </div>
         </div>
 
@@ -525,7 +910,7 @@ export default function EditShopPage() {
             <div className="space-y-2">
               {extraFields.map((f) => (
                 <div key={f.key}>
-                  <label className={labelCls}>{f.label}</label>
+                  <label className={labelCls}>{["menu_url", "price_range"].includes(f.key) && <span className="text-sm">📍</span>} {f.label}</label>
                   {f.key === "price_range" ? (
                     // ¥プレフィックス付き・price_from / price_to で個別管理
                     <div className="flex items-center gap-2">
@@ -564,7 +949,7 @@ export default function EditShopPage() {
         )}
 
         {/* ── 営業時間 ── */}
-        <SectionLabel dark>営業時間</SectionLabel>
+        <SectionLabel dark meoIcon>営業時間 <span className="text-red-500">※</span></SectionLabel>
         {/* 一括設定（モバイル対応） */}
         <div className="bg-gray-50 rounded-xl p-3 mb-3">
           <p className="text-xs text-gray-600 font-medium mb-2">一括設定</p>
@@ -643,30 +1028,33 @@ export default function EditShopPage() {
             const emoji = FACILITY_EMOJI[f.key];
             return (
               <div key={f.key} className="bg-gray-50 rounded-xl p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-gray-500">
-                    {emoji && <span className="mr-1">{emoji}</span>}{f.label}
-                  </p>
-                  {showRemove && (
-                    <button type="button" onClick={showRemove} className="text-gray-300 text-xs">✕</button>
-                  )}
-                </div>
+                {f.type === "boolean" ? (
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm flex-1">
+                      <input
+                        type="checkbox"
+                        checked={!!facilities[f.key]}
+                        onChange={(e) =>
+                          setFacilities({ ...facilities, [f.key]: e.target.checked })
+                        }
+                        className="accent-black"
+                      />
+                      {f.label}
+                    </label>
+                    {showRemove && (
+                      <button type="button" onClick={showRemove} className="text-gray-300 text-xs">✕</button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-gray-500">{f.label}</p>
+                      {showRemove && (
+                        <button type="button" onClick={showRemove} className="text-gray-300 text-xs">✕</button>
+                      )}
+                    </div>
 
-                {f.type === "boolean" && (
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={!!facilities[f.key]}
-                      onChange={(e) =>
-                        setFacilities({ ...facilities, [f.key]: e.target.checked })
-                      }
-                      className="accent-black"
-                    />
-                    あり
-                  </label>
-                )}
-
-                {f.type === "enum" && (
+                    {f.type === "enum" && (
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {f.options?.map((opt: any) => (
                       <label key={opt.value} className="flex items-center gap-1.5 text-sm">
@@ -708,6 +1096,8 @@ export default function EditShopPage() {
                       );
                     })}
                   </div>
+                )}
+                  </>
                 )}
               </div>
             );
@@ -786,15 +1176,59 @@ export default function EditShopPage() {
           );
         })()}
 
+        {/* ── よくある質問 ── */}
+        <SectionLabel dark meoIcon>よくある質問</SectionLabel>
+        <div className="space-y-3">
+          {faqs.map((faq, index) => (
+            <div key={index} className="border border-gray-200 rounded-xl p-3">
+              <div className="flex items-start gap-2 mb-2">
+                <input
+                  type="text"
+                  className={`${inputCls} flex-1`}
+                  value={faq.name || ""}
+                  onChange={(e) => {
+                    const updated = [...faqs];
+                    updated[index].name = e.target.value;
+                    setFaqs(updated);
+                  }}
+                  placeholder="質問を入力（例：駐車場はありますか？）"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFaqs(faqs.filter((_, i) => i !== index))}
+                  className="text-gray-400 text-sm py-3"
+                >
+                  ✕
+                </button>
+              </div>
+              <textarea
+                className={`${inputCls} resize-none w-full`}
+                rows={2}
+                value={faq.acceptedAnswer?.text || ""}
+                onChange={(e) => {
+                  const updated = [...faqs];
+                  updated[index].acceptedAnswer = { "@type": "Answer", text: e.target.value };
+                  setFaqs(updated);
+                }}
+                placeholder="回答を入力（例：無料駐車場30台完備）"
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setFaqs([...faqs, { "@type": "Question", name: "", acceptedAnswer: { "@type": "Answer", text: "" } }]);
+            }}
+            className="w-full border border-gray-300 bg-gray-50 text-gray-700 text-sm py-3 rounded-xl"
+          >
+            + 質問を追加
+          </button>
+        </div>
+
         {/* 削除 */}
         <div className="pt-10 pb-4">
           <button
-            onClick={async () => {
-              if (!confirm("本当に削除しますか？")) return;
-              const { error } = await supabase.from("shops").delete().eq("id", id);
-              if (!error) { alert("削除しました"); router.push("/mypage"); }
-              else { alert("削除に失敗しました"); console.error(error); }
-            }}
+            onClick={() => setShowDeleteConfirm(true)}
             className="w-full text-red-500 text-sm py-3"
           >
             この店舗を削除する
@@ -802,9 +1236,89 @@ export default function EditShopPage() {
         </div>
       </div>
 
+      {/* 削除確認モーダル */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full">
+            <h3 className="font-bold text-lg mb-4 text-red-600">店舗情報を削除しますか？</h3>
+            <div className="text-sm text-gray-700 whitespace-pre-line mb-6">
+              削除すると入力されたデータ及び
+ランクデータの復旧ができません。
+本当に店舗情報を削除されますか？
+
+また、すでにお支払いいただいた
+月額料金の返金は致しかねます。
+
+（期間内であれば、新規店舗の登録は可能です）
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="flex-1 border border-gray-300 text-gray-700 font-semibold py-2 rounded-lg hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 bg-red-500 text-white font-bold py-2 rounded-lg hover:bg-red-600 disabled:opacity-50"
+              >
+                {isDeleting ? "削除中..." : "削除する"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 凡例ボタン（右下固定） */}
+      <button
+        onClick={() => setShowLegend(!showLegend)}
+        className="fixed bottom-8 right-4 bg-yellow-400 text-black text-xs px-3 py-2 rounded-lg font-semibold"
+      >
+        📍 マークの意味
+      </button>
+
+      {/* 凡例ポップアップ */}
+      {showLegend && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full">
+            <h3 className="font-bold text-lg mb-4">マークの意味</h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex gap-2">
+                <span className="text-lg">📍</span>
+                <div>
+                  <p className="font-semibold">MEOに効果的な項目</p>
+                  <p className="text-gray-600">Google マップ検索結果に反映される重要な情報</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-lg">⚙️</span>
+                <div>
+                  <p className="font-semibold">Google Business Profile から自動取得</p>
+                  <p className="text-gray-600">GBP登録情報から自動入力されたデータ</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-lg">※</span>
+                <div>
+                  <p className="font-semibold">必須項目</p>
+                  <p className="text-gray-600">保存するために必ず入力が必要</p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowLegend(false)}
+              className="w-full mt-6 bg-black text-white font-bold py-2 rounded-lg"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Footers */}
       <Footer />
-      <FooterMenu />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import FooterMenu from "@/components/FooterMenu";
+import HeaderHome from "@/components/HeaderHome";
 
 export default function Home() {
   const [shops, setShops] = useState<any[]>([]);
@@ -105,47 +106,17 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-black pb-20">
       {/* ヘッダー */}
-      <div className="sticky top-0 bg-white z-10 border-b p-3 space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="font-bold text-lg">MiseAge</div>
-
-          <button
-            onClick={() => setIsAreaOpen(true)}
-            className="text-sm text-gray-500"
-          >
-            {prefecture || "全国版"} ▼
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            className="flex-1 border rounded-lg px-3 py-2 text-sm"
-            placeholder="店名で検索"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={(e) => {
-              setIsComposing(false);
-              setSearch(e.currentTarget.value);
-            }}
-          />
-
-          <button
-            onClick={() => {
-              setDraftFilters({ ...facilityFilters });
-              setIsConditionOpen(true);
-            }}
-            className={`relative border px-3 py-2 rounded-lg ${activeConditionCount > 0 ? "bg-black text-white" : ""}`}
-          >
-            ⚙︎
-            {activeConditionCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                {activeConditionCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+      <HeaderHome
+        search={search}
+        onSearchChange={setSearch}
+        onSearchCompositionStart={() => setIsComposing(true)}
+        onSearchCompositionEnd={(e) => {
+          setIsComposing(false);
+          setSearch(e.currentTarget.value);
+        }}
+        prefecture={prefecture}
+        onPrefectureClick={() => setIsAreaOpen(true)}
+      />
 
       {/* facilityタグ（エリア選択時のみ） */}
       {prefecture && (

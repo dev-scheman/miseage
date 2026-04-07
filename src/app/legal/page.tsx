@@ -1,54 +1,42 @@
-"use client";
+import { Metadata } from "next";
+import HeaderSimple from "@/components/HeaderSimple";
 
-import { useRouter } from "next/navigation";
-import Head from "next/head";
+export const metadata: Metadata = {
+  robots: "noindex",
+};
 
 export default function LegalPage() {
-  const router = useRouter();
-
   return (
-    <>
-      <head>
-        <meta name="robots" content="noindex" />
-      </head>
-      <div className="min-h-screen bg-white text-black">
-      <header className="border-b p-4">
-        <button
-          onClick={() => router.push("/")}
-          className="font-bold text-lg hover:opacity-70"
-        >
-          MiseAge
-        </button>
-      </header>
+    <div className="min-h-screen bg-white text-black">
+      <HeaderSimple />
 
       <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
         <h1 className="text-3xl font-bold">特定商取引法に基づく表示</h1>
 
         <div className="space-y-4 text-gray-700">
-          <div className="grid grid-cols-3 gap-4 border rounded-lg p-4">
-            <div>
-              <p className="font-semibold">販売業者</p>
-              <p className="text-sm">合同会社 Show Tech</p>
-            </div>
-            <div>
-              <p className="font-semibold">代表者名</p>
-              <p className="text-sm">大川将祉</p>
-            </div>
-            <div>
-              <p className="font-semibold">住所</p>
-              <p className="text-sm">福岡県久留米市日ノ出町15-701</p>
-            </div>
+          <div className="border rounded-lg p-4">
+            <p className="font-semibold mb-2">販売業者</p>
+            <p className="text-sm">合同会社 Show Tech</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 border rounded-lg p-4">
-            <div>
-              <p className="font-semibold">電話番号</p>
-              <p className="text-sm">090-4191-7089</p>
-            </div>
-            <div>
-              <p className="font-semibold">メールアドレス</p>
-              <p className="text-sm">support@miseage.jp</p>
-            </div>
+          <div className="border rounded-lg p-4">
+            <p className="font-semibold mb-2">代表者名</p>
+            <p className="text-sm">大川将祉</p>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <p className="font-semibold mb-2">住所</p>
+            <p className="text-sm">福岡県久留米市日ノ出町15-701</p>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <p className="font-semibold mb-2">電話番号</p>
+            <p className="text-sm">090-4191-7089</p>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <p className="font-semibold mb-2">メールアドレス</p>
+            <p className="text-sm">support@miseage.jp</p>
           </div>
 
           <div className="border rounded-lg p-4">
@@ -98,6 +86,5 @@ export default function LegalPage() {
         </p>
       </div>
     </div>
-    </>
   );
 }

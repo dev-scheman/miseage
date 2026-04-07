@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { FACILITY_EMOJI } from "@/lib/facilityEmoji";
 import Footer from "@/components/Footer";
 import FooterMenu from "@/components/FooterMenu";
+import HeaderSimple from "@/components/HeaderSimple";
 
 const DAYS = [
   { key: "monday",    label: "月" },
@@ -27,6 +28,8 @@ export default function ShopPage() {
 
   const [shop, setShop] = useState<any>(null);
   const [facilityMaster, setFacilityMaster] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -39,6 +42,12 @@ export default function ShopPage() {
         .eq("slug", slug)
         .single();
 
+      if (!shopData) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
       // facility master
       const { data: master } = await supabase
         .from("facility_master")
@@ -46,12 +55,39 @@ export default function ShopPage() {
 
       setShop(shopData);
       setFacilityMaster(master || []);
+      setLoading(false);
     };
 
     fetchData();
   }, [slug]);
 
-  if (!shop) return <div className="p-6">読み込み中...</div>;
+  if (loading) return <div className="p-6">読み込み中...</div>;
+
+  if (notFound) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <HeaderSimple />
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-12">
+          <div className="w-full max-w-md text-center space-y-6">
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold">404</h1>
+              <p className="text-xl text-gray-600">ページが見つかりません</p>
+              <p className="text-sm text-gray-500">
+                申し訳ありません。お探しのページは存在しません。
+              </p>
+            </div>
+
+            <a
+              href="/"
+              className="inline-block w-full bg-black text-white py-3 rounded-lg font-semibold hover:opacity-90"
+            >
+              トップページに戻る
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // facility label取得用
   const facilityMap = Object.fromEntries(

@@ -1,7 +1,8 @@
 "use client";
 
-import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import HeaderSimple from "@/components/HeaderSimple";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,14 +18,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b p-4">
-        <button
-          onClick={() => router.push("/")}
-          className="font-bold text-lg hover:opacity-70"
-        >
-          MiseAge
-        </button>
-      </header>
+      <HeaderSimple />
       <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-12">
         {/* カード */}
         <div className="w-full max-w-md bg-white border rounded-2xl p-8 shadow-sm space-y-6">
